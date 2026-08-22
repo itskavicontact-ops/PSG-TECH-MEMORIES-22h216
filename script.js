@@ -2,29 +2,25 @@ document.addEventListener("DOMContentLoaded", () => {
   const chapters = document.querySelectorAll(".chapter");
   const navLinks = document.querySelectorAll("nav a");
 
-const password = prompt("Please enter the password to view the album:");
-
-if (password !== "22h216") { 
+  const password = prompt("Please enter the password to view the album:");
+  if (password !== "22h216") {
     alert("Incorrect password. Access denied.");
     document.body.innerHTML = "<h1>Access Denied. This website is private.</h1>";
-    window.stop(); // Stops the rest of the script from running
-}
+    window.stop();
+  }
 
-
-  // Reveal each chapter as it scrolls into view
+  // ===== Reveal each chapter as it scrolls into view =====
   const revealObserver = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("in-view");
-        }
+        if (entry.isIntersecting) entry.target.classList.add("in-view");
       });
     },
     { threshold: 0.15 }
   );
   chapters.forEach((chapter) => revealObserver.observe(chapter));
 
-  // Highlight the nav link matching the chapter currently in view
+  // ===== Highlight nav link for chapter in view =====
   const navObserver = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -40,29 +36,7 @@ if (password !== "22h216") {
   );
   chapters.forEach((chapter) => navObserver.observe(chapter));
 
-  // ===== Inline video play/pause on click =====
-  document.querySelectorAll(".media-item.media-video").forEach((item) => {
-    const video = item.querySelector("video");
-    const btn = item.querySelector(".play-btn");
-    if (!video || !btn) return;
-
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (video.paused) {
-        video.play();
-        btn.style.opacity = "0";
-      } else {
-        video.pause();
-        btn.style.opacity = "1";
-      }
-    });
-
-    video.addEventListener("click", (e) => e.stopPropagation());
-    video.addEventListener("pause", () => (btn.style.opacity = "1"));
-    video.addEventListener("ended", () => (btn.style.opacity = "1"));
-  });
-
-  // ===== Lightbox for photos =====
+  // ===== Lightbox (delegated so it works for images added later too) =====
   const lightbox = document.getElementById("lightbox");
   const stage = document.getElementById("lightboxStage");
   const closeBtn = document.getElementById("lightboxClose");
@@ -91,21 +65,68 @@ if (password !== "22h216") {
     stage.innerHTML = "";
   }
 
-  document.querySelectorAll(".media-item img").forEach((img) => {
-    img.addEventListener("click", () => openLightbox(img));
+  document.addEventListener("click", (e) => {
+    const img = e.target.closest(".media-item img");
+    if (img) openLightbox(img);
   });
 
   document.querySelectorAll(".media-item.media-video").forEach((item) => {
     const video = item.querySelector("video");
-    // Double-click (or click the caption area) opens the full lightbox view
-    item.addEventListener("dblclick", () => openLightbox(video));
+    const btn = item.querySelector(".play-btn");
+    if (!video || !btn) return;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (video.paused) { video.play(); btn.style.opacity = "0"; }
+      else { video.pause(); btn.style.opacity = "1"; }
+    });
+    video.addEventListener("click", (e) => e.stopPropagation());
+    video.addEventListener("pause", () => (btn.style.opacity = "1"));
+    video.addEventListener("ended", () => (btn.style.opacity = "1"));
   });
 
   closeBtn.addEventListener("click", closeLightbox);
-  lightbox.addEventListener("click", (e) => {
-    if (e.target === lightbox) closeLightbox();
+  lightbox.addEventListener("click", (e) => { if (e.target === lightbox) closeLightbox(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLightbox(); });
+
+  // ===== Batch-reveal the Travelling gallery (fixes the mobile crash) =====
+  const travelFigures = document.querySelectorAll('#travel .media-item');
+  const BATCH_SIZE = 12;
+  let travelRevealed = 0;
+  let loadMoreBtn = null;
+
+  travelFigures.forEach((figure, index) => {
+    const img = figure.querySelector('img');
+    if (img) {
+      img.dataset.src = img.getAttribute('src');
+      img.removeAttribute('src');
+    }
+    if (index >= BATCH_SIZE) figure.style.display = 'none';
   });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeLightbox();
-  });
+
+  function revealTravelBatch() {
+    const start = travelRevealed;
+    const end = Math.min(start + BATCH_SIZE, travelFigures.length);
+    for (let i = start; i < end; i++) {
+      const figure = travelFigures[i];
+      const img = figure.querySelector('img');
+      figure.style.display = '';
+      if (img && img.dataset.src) img.src = img.dataset.src;
+    }
+    travelRevealed = end;
+    if (travelRevealed >= travelFigures.length && loadMoreBtn) {
+      loadMoreBtn.disabled = true;
+      loadMoreBtn.textContent = 'All photos loaded';
+    }
+  }
+
+  revealTravelBatch();
+
+  const travelSection = document.getElementById('travel');
+  if (travelSection && travelFigures.length > BATCH_SIZE) {
+    loadMoreBtn = document.createElement('button');
+    loadMoreBtn.textContent = 'Load more photos';
+    loadMoreBtn.className = 'load-more-btn';
+    loadMoreBtn.addEventListener('click', revealTravelBatch);
+    travelSection.appendChild(loadMoreBtn);
+  }
 });
