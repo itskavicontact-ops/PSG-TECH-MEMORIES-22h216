@@ -9,36 +9,51 @@ if (password !== "22h216") {
     document.body.innerHTML = "<h1>Access Denied. This website is private.</h1>";
     window.stop(); // Stops the rest of the script from running
 }
+// ===== Batch-reveal the Travelling gallery without touching your HTML =====
+const travelFigures = document.querySelectorAll('#travel .media-item');
+const BATCH_SIZE = 12;
+let travelRevealed = 0;
+let loadMoreBtn = null;
 
-// ===== True lazy-mount for the Travelling gallery (keeps all 88 <figure> tags) =====
-const travelImgs = document.querySelectorAll('#travel .media-item img');
-
-// Step 1: strip src so nothing loads immediately, but remember the real URL
-travelImgs.forEach((img) => {
-  img.dataset.src = img.getAttribute('src');
-  img.removeAttribute('src');
+// Strip src from every travel image, and hide anything beyond the first batch
+travelFigures.forEach((figure, index) => {
+  const img = figure.querySelector('img');
+  if (img) {
+    img.dataset.src = img.getAttribute('src');
+    img.removeAttribute('src');
+  }
+  if (index >= BATCH_SIZE) {
+    figure.style.display = 'none';
+  }
 });
 
-// Step 2: load an image only when it's about to scroll into view,
-// and unload it again once it's scrolled well past (frees memory)
-const travelLazyObserver = new IntersectionObserver(
-  (entries) => {
-    entries.forEach((entry) => {
-      const img = entry.target;
-      if (entry.isIntersecting) {
-        if (!img.getAttribute('src')) img.src = img.dataset.src;
-      } else {
-        // Optional: uncomment the next line to free memory for images
-        // that have scrolled far off-screen. Safe to leave commented
-        // if things work fine without it.
-        // img.removeAttribute('src');
-      }
-    });
-  },
-  { rootMargin: '800px 0px', threshold: 0.01 }
-);
+function revealTravelBatch() {
+  const start = travelRevealed;
+  const end = Math.min(start + BATCH_SIZE, travelFigures.length);
+  for (let i = start; i < end; i++) {
+    const figure = travelFigures[i];
+    const img = figure.querySelector('img');
+    figure.style.display = '';
+    if (img && img.dataset.src) img.src = img.dataset.src;
+  }
+  travelRevealed = end;
+  if (travelRevealed >= travelFigures.length && loadMoreBtn) {
+    loadMoreBtn.disabled = true;
+    loadMoreBtn.textContent = 'All photos loaded';
+  }
+}
 
-travelImgs.forEach((img) => travelLazyObserver.observe(img));
+revealTravelBatch(); // show the first 12 right away
+
+// Auto-create the "Load more" button — no HTML edit needed
+const travelSection = document.getElementById('travel');
+if (travelSection && travelFigures.length > BATCH_SIZE) {
+  loadMoreBtn = document.createElement('button');
+  loadMoreBtn.textContent = 'Load more photos';
+  loadMoreBtn.className = 'load-more-btn';
+  loadMoreBtn.addEventListener('click', revealTravelBatch);
+  travelSection.appendChild(loadMoreBtn);
+}
 
   // Reveal each chapter as it scrolls into view
   const revealObserver = new IntersectionObserver(
