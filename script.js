@@ -9,51 +9,7 @@ if (password !== "22h216") {
     document.body.innerHTML = "<h1>Access Denied. This website is private.</h1>";
     window.stop(); // Stops the rest of the script from running
 }
-// ===== Batch-reveal the Travelling gallery without touching your HTML =====
-const travelFigures = document.querySelectorAll('#travel .media-item');
-const BATCH_SIZE = 12;
-let travelRevealed = 0;
-let loadMoreBtn = null;
 
-// Strip src from every travel image, and hide anything beyond the first batch
-travelFigures.forEach((figure, index) => {
-  const img = figure.querySelector('img');
-  if (img) {
-    img.dataset.src = img.getAttribute('src');
-    img.removeAttribute('src');
-  }
-  if (index >= BATCH_SIZE) {
-    figure.style.display = 'none';
-  }
-});
-
-function revealTravelBatch() {
-  const start = travelRevealed;
-  const end = Math.min(start + BATCH_SIZE, travelFigures.length);
-  for (let i = start; i < end; i++) {
-    const figure = travelFigures[i];
-    const img = figure.querySelector('img');
-    figure.style.display = '';
-    if (img && img.dataset.src) img.src = img.dataset.src;
-  }
-  travelRevealed = end;
-  if (travelRevealed >= travelFigures.length && loadMoreBtn) {
-    loadMoreBtn.disabled = true;
-    loadMoreBtn.textContent = 'All photos loaded';
-  }
-}
-
-revealTravelBatch(); // show the first 12 right away
-
-// Auto-create the "Load more" button — no HTML edit needed
-const travelSection = document.getElementById('travel');
-if (travelSection && travelFigures.length > BATCH_SIZE) {
-  loadMoreBtn = document.createElement('button');
-  loadMoreBtn.textContent = 'Load more photos';
-  loadMoreBtn.className = 'load-more-btn';
-  loadMoreBtn.addEventListener('click', revealTravelBatch);
-  travelSection.appendChild(loadMoreBtn);
-}
 
   // Reveal each chapter as it scrolls into view
   const revealObserver = new IntersectionObserver(
